@@ -32,7 +32,7 @@ export function App({ command, args, flags }: AppProps) {
       <Header />
       {command === "spawn" && (
         <SpawnCommand
-          count={args[0] ? parseInt(args[0], 10) : flags.task ? 1 : 3}
+          count={args[0] ? parseInt(args[0], 10) : 1}
           terminal={flags.terminal as "kitty" | "iterm" | undefined}
           branch={flags.branch}
           task={flags.task}

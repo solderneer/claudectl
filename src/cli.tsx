@@ -10,7 +10,7 @@ const cli = meow(
     $ claudectl <command> [options]
 
   Commands
-    spawn [count]    Spawn new Claude agents (default: 3, or 1 with --task)
+    spawn [count]    Spawn new Claude agents (default: 1)
     list             List existing Claude agents
     delete <agent>   Delete a specific agent
     prune            Remove all agents for current repository
