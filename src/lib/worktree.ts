@@ -79,7 +79,10 @@ export async function ensureBareRepo(remoteUrl: string, repoHash: string): Promi
     }
   } else {
     // Fetch latest changes
-    await execa("git", ["fetch", "--all", "--prune"], { cwd: bareRepoPath });
+    // In bare repos, we need explicit refspec since --bare clone doesn't set up fetch config
+    await execa("git", ["fetch", "origin", "+refs/heads/*:refs/heads/*", "--prune"], {
+      cwd: bareRepoPath,
+    });
   }
 
   return bareRepoPath;

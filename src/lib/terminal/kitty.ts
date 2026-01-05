@@ -29,3 +29,21 @@ export async function isKittyAvailable(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Close Kitty tabs matching Claude agent names
+ */
+export async function closeKittyTabs(agentNames: string[]): Promise<number> {
+  let closed = 0;
+
+  for (const name of agentNames) {
+    try {
+      await execa("kitten", ["@", "close-tab", "--match", `title:^Claude \\[${name}\\]$`]);
+      closed++;
+    } catch {
+      // Tab may not exist or already closed - continue
+    }
+  }
+
+  return closed;
+}

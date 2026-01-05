@@ -4,6 +4,7 @@ import { SpawnCommand } from "./commands/spawn.js";
 import { ListCommand } from "./commands/list.js";
 import { DeleteCommand } from "./commands/delete.js";
 import { PruneCommand } from "./commands/prune.js";
+import { CleanCommand } from "./commands/clean.js";
 import { Header } from "./components/Header.js";
 
 export interface AppProps {
@@ -21,7 +22,7 @@ export interface AppProps {
   };
 }
 
-const KNOWN_COMMANDS = ["spawn", "list", "delete", "prune"];
+const KNOWN_COMMANDS = ["spawn", "list", "delete", "prune", "clean"];
 
 export function App({ command, args, flags }: AppProps) {
   const isKnownCommand = KNOWN_COMMANDS.includes(command);
@@ -31,7 +32,7 @@ export function App({ command, args, flags }: AppProps) {
       <Header />
       {command === "spawn" && (
         <SpawnCommand
-          count={args[0] ? parseInt(args[0], 10) : 3}
+          count={args[0] ? parseInt(args[0], 10) : flags.task ? 1 : 3}
           terminal={flags.terminal as "kitty" | "iterm" | undefined}
           branch={flags.branch}
           task={flags.task}
@@ -43,6 +44,12 @@ export function App({ command, args, flags }: AppProps) {
       {command === "list" && <ListCommand all={flags.all} />}
       {command === "delete" && <DeleteCommand agentName={args[0] || ""} force={flags.force} />}
       {command === "prune" && <PruneCommand all={flags.all} force={flags.force} />}
+      {command === "clean" && (
+        <CleanCommand
+          force={flags.force}
+          terminal={flags.terminal as "kitty" | "iterm" | undefined}
+        />
+      )}
       {!isKnownCommand && (
         <Box marginTop={1}>
           <Text color="red">Unknown command: {command}</Text>

@@ -10,10 +10,11 @@ const cli = meow(
     $ claudectl <command> [options]
 
   Commands
-    spawn [count]    Spawn new Claude agents (default: 3)
+    spawn [count]    Spawn new Claude agents (default: 3, or 1 with --task)
     list             List existing Claude agents
     delete <agent>   Delete a specific agent
     prune            Remove all agents for current repository
+    clean            Close tabs and remove agents for current repository
 
   Spawn Options
     -a, --agent      Reuse an existing agent (mutually exclusive with count)
@@ -33,6 +34,10 @@ const cli = meow(
     --all            Prune agents across all repositories
     -f, --force      Skip confirmation prompt
 
+  Clean Options
+    -t, --terminal   Force terminal type (kitty, iterm)
+    -f, --force      Skip confirmation prompt
+
   Examples
     $ claudectl spawn 5                     # Spawn 5 new agents
     $ claudectl spawn --agent alice         # Reuse agent alice
@@ -42,6 +47,8 @@ const cli = meow(
     $ claudectl delete alice                # Delete agent alice
     $ claudectl prune                       # Remove all agents (current repo)
     $ claudectl prune --all --force         # Remove all agents everywhere
+    $ claudectl clean                       # Close tabs and remove agents
+    $ claudectl clean --force               # Skip confirmation
 `,
   {
     importMeta: import.meta,
