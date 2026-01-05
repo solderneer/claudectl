@@ -79,7 +79,10 @@ Agent worktrees are stored centrally:
 
 **Commands** (`src/commands/`)
 
-- `spawn.tsx` - Main command: creates worktrees, launches Claude in terminal tabs
+- `spawn.tsx` - Creates worktrees and launches Claude in terminal tabs
+- `list.tsx` - Lists existing Claude agents
+- `delete.tsx` - Deletes a specific agent
+- `prune.tsx` - Removes all agents for a repository
 
 **Components** (`src/components/`)
 
@@ -102,7 +105,7 @@ Agent worktrees are stored centrally:
 - **Git worktrees**: Uses a single bare repo with worktrees instead of full clones. Dramatically reduces disk space and spawn time.
 - **Agent names**: Uses memorable names (betty, felix, grace). Names persist via worktree directory names.
 - **Branch naming**: Auto-generates branches like `feat/alice-fix-auth` based on agent name and task description.
-- **Smart reuse**: If worktree exists, it's reused. Use `--clean` to force fresh worktrees.
+- **Always new**: By default, spawn always creates new agents. Use `--agent <name>` to explicitly reuse an existing agent.
 - **Terminal abstraction**: `LaunchOptions` interface with `name`, `cwd`, `command` - implementations for Kitty and iTerm2.
 
 ### State Management
@@ -112,19 +115,37 @@ SpawnCommand uses React hooks with phases: `init` → `preparing` → `spawning`
 ## CLI Usage
 
 ```bash
-# Spawn 3 agents (default)
+# Spawn 3 new agents (default)
 claudectl spawn
 
 # Spawn with task description (auto-generates branch names)
 claudectl spawn 2 --task "fix auth bug"
 # Creates: fix/alice-fix-auth-bug, fix/betty-fix-auth-bug
 
-# Force fresh worktrees
-claudectl spawn --clean
+# Reuse an existing agent
+claudectl spawn --agent alice
+
+# Reuse agent with new task (creates new branch)
+claudectl spawn --agent alice --task "add tests"
 
 # Dry run to see what would happen
 claudectl spawn --dry-run
 
 # Specify base branch
 claudectl spawn --branch develop
+
+# List agents for current repo
+claudectl list
+
+# List all agents
+claudectl list --all
+
+# Delete a specific agent
+claudectl delete alice
+
+# Remove all agents for current repo
+claudectl prune
+
+# Remove all agents everywhere
+claudectl prune --all --force
 ```

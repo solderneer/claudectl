@@ -62,6 +62,7 @@ export async function getExistingAgents(repoHash: string): Promise<string[]> {
 /**
  * Pick agent names, preferring existing ones first.
  * This is now async since it needs to check worktrees.
+ * @deprecated Use pickNewAgentNames for default behavior
  */
 export async function pickAgentNames(count: number, repoHash: string): Promise<string[]> {
   const existing = await getExistingAgents(repoHash);
@@ -82,6 +83,25 @@ export async function pickAgentNames(count: number, repoHash: string): Promise<s
   }
 
   return result;
+}
+
+/**
+ * Pick new agent names that are not currently in use.
+ * Always returns unused names (never reuses existing agents).
+ */
+export async function pickNewAgentNames(count: number, repoHash: string): Promise<string[]> {
+  const existing = await getExistingAgents(repoHash);
+  const available = AGENT_NAMES.filter((n) => !existing.includes(n));
+
+  if (available.length < count) {
+    throw new Error(
+      `Not enough available agent names. Requested ${count}, but only ${available.length} unused names available. ` +
+        `Use 'claudectl prune' to remove existing agents or 'claudectl delete <name>' to remove specific ones.`
+    );
+  }
+
+  const shuffled = available.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
 }
 
 /**

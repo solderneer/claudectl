@@ -34,11 +34,27 @@ claudectl is a multi-agent Claude orchestration tool for macOS. It enables paral
 2. claudectl identifies the repo by hashing its remote URL
 3. Creates/reuses a bare repo at `~/.claudectl/repos/<hash>/bare/`
 4. For each agent:
+   - Picks an unused agent name from the pool
    - Generates a branch name (e.g., `feat/alice-work`)
-   - Creates a worktree at `~/.claudectl/repos/<hash>/worktrees/<name>/`
-   - If worktree exists: resets to target branch (fast)
-   - If new: creates fresh worktree
+   - Creates a fresh worktree at `~/.claudectl/repos/<hash>/worktrees/<name>/`
 5. Launches terminal tabs (Kitty/iTerm) with Claude Code in each worktree
+
+### Agent Instance Behavior
+
+**Default (Always New)**: By default, `spawn` always creates new agent instances with fresh worktrees. This ensures clean state and avoids contamination from previous sessions.
+
+**Explicit Reuse**: To reuse an existing agent, specify it with `--agent`:
+
+```bash
+claudectl spawn --agent alice              # Reuse alice, assign new task/branch
+claudectl spawn --agent alice --task "..."  # Reuse alice with new branch for task
+```
+
+When reusing an agent:
+
+- The existing worktree is preserved
+- A new branch is created and checked out (if --task provided)
+- Without --task, continues on current branch
 
 ### Branch Naming
 
@@ -69,25 +85,100 @@ Branch type is inferred from task keywords:
 claudectl spawn [count] [options]
 ```
 
-Spawn multiple Claude agents in terminal tabs.
+Spawn multiple Claude agents in terminal tabs. Always creates new agent instances by default.
 
 **Options:**
 
+- `-a, --agent <name>` - Reuse an existing agent (creates new branch if --task provided)
 - `-t, --terminal <type>` - Force terminal (kitty, iterm)
 - `-b, --branch <name>` - Base branch for worktrees (default: current)
 - `-T, --task <desc>` - Task description for branch naming
-- `-c, --clean` - Delete existing worktrees and create fresh
 - `-n, --no-notify` - Disable macOS notifications
 - `--dry-run` - Preview without executing
 
 **Examples:**
 
 ```bash
-claudectl spawn                          # Spawn 3 agents
-claudectl spawn 5                        # Spawn 5 agents
-claudectl spawn --task "fix auth bug"    # Auto-generate fix/ branches
-claudectl spawn --branch develop         # Base worktrees on develop
-claudectl spawn --clean                  # Fresh worktrees
+claudectl spawn                          # Spawn 3 new agents
+claudectl spawn 5                        # Spawn 5 new agents
+claudectl spawn --task "fix auth bug"    # New agents with fix/ branches
+claudectl spawn --branch develop         # New agents based on develop
+claudectl spawn --agent alice            # Reuse existing alice agent
+claudectl spawn --agent alice --task "new feature"  # Reuse alice, new branch
+```
+
+---
+
+### list
+
+```bash
+claudectl list [options]
+```
+
+List all existing Claude agent instances for the current repository.
+
+**Options:**
+
+- `-a, --all` - List agents across all repositories
+
+**Examples:**
+
+```bash
+claudectl list                           # List agents for current repo
+claudectl list --all                     # List all agents across all repos
+```
+
+**Output:**
+
+```
+Agents for solderneer/claudectl:
+  alice     feat/alice-work          2h ago
+  betty     fix/betty-fix-auth       1d ago
+  felix     feat/felix-add-tests     3d ago
+```
+
+---
+
+### delete
+
+```bash
+claudectl delete <agent> [options]
+```
+
+Delete a specific Claude agent instance and its worktree.
+
+**Options:**
+
+- `-f, --force` - Force deletion without confirmation
+
+**Examples:**
+
+```bash
+claudectl delete alice                   # Delete alice (with confirmation)
+claudectl delete alice --force           # Delete without confirmation
+```
+
+---
+
+### prune
+
+```bash
+claudectl prune [options]
+```
+
+Remove all Claude agent instances for the current repository.
+
+**Options:**
+
+- `-a, --all` - Prune agents across all repositories
+- `-f, --force` - Force deletion without confirmation
+
+**Examples:**
+
+```bash
+claudectl prune                          # Remove all agents for current repo
+claudectl prune --all                    # Remove all agents everywhere
+claudectl prune --force                  # Skip confirmation
 ```
 
 ---
@@ -125,9 +216,9 @@ const worktrees = await listWorktrees(repoHash);
 
 Names are drawn from a pool of memorable names: alice, betty, felix, grace, etc.
 
-- Existing worktrees are reused when possible
-- New names are picked randomly from unused pool
-- `--clean` flag ignores existing and picks fresh names
+- New names are picked randomly from unused pool (names not currently in use)
+- Use `--agent <name>` to explicitly reuse an existing agent
+- Use `claudectl list` to see which agents are currently in use
 
 ---
 

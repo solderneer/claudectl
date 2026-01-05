@@ -12,7 +12,7 @@ import {
 } from "../lib/terminal/index.js";
 import { getGitInfo, isGitRepo, GitError } from "../lib/git.js";
 import { notifySpawnComplete } from "../lib/notifications.js";
-import { pickAgentNames, getRandomAgentNames } from "../lib/names.js";
+import { pickNewAgentNames, isValidAgentName, isExistingAgent } from "../lib/names.js";
 import { hashRemoteUrl } from "../lib/repo-hash.js";
 import { ensureClaudectlDirs, getWorktreePath, getBareRepoPath } from "../lib/paths.js";
 import {
@@ -20,6 +20,7 @@ import {
   createWorktree,
   worktreeExists,
   getDefaultBranch,
+  switchWorktreeBranch,
   WorktreeError,
 } from "../lib/worktree.js";
 import { generateAgentBranchName } from "../lib/branch.js";
@@ -29,9 +30,9 @@ export interface SpawnCommandProps {
   terminal?: "kitty" | "iterm";
   branch?: string;
   task?: string;
+  agent?: string;
   notify: boolean;
   dryRun: boolean;
-  clean: boolean;
 }
 
 interface AgentState {
@@ -66,9 +67,9 @@ export function SpawnCommand({
   terminal,
   branch,
   task,
+  agent,
   notify,
   dryRun,
-  clean,
 }: SpawnCommandProps) {
   const { exit } = useApp();
   const [agents, setAgents] = useState<AgentState[]>([]);
@@ -81,7 +82,8 @@ export function SpawnCommand({
 
   // Initialize
   useEffect(() => {
-    if (count < 1 || count > 10) {
+    // Validate count only when not using specific agent
+    if (!agent && (count < 1 || count > 10)) {
       setError("Count must be between 1 and 10");
       return;
     }
@@ -109,25 +111,41 @@ export function SpawnCommand({
         // Ensure claudectl directories exist
         ensureClaudectlDirs();
 
-        // Pick agent names
+        // Determine agent names
         let names: string[];
-        if (clean) {
-          names = getRandomAgentNames(count);
+        let isReusingAgent = false;
+
+        if (agent) {
+          // Reuse specific agent
+          if (!isValidAgentName(agent)) {
+            setError(`Invalid agent name: ${agent}. Use 'claudectl list' to see available agents.`);
+            return;
+          }
+          const exists = await isExistingAgent(agent, hash);
+          if (!exists) {
+            setError(
+              `Agent '${agent}' does not exist. Use 'claudectl list' to see existing agents.`
+            );
+            return;
+          }
+          names = [agent];
+          isReusingAgent = true;
         } else {
-          names = await pickAgentNames(count, hash);
+          // Always pick new unused agent names
+          names = await pickNewAgentNames(count, hash);
         }
 
-        // Check which agents already exist
+        // Build agent states
         const agentStates: AgentState[] = await Promise.all(
           names.map(async (name) => {
-            const exists = !clean && (await worktreeExists(hash, name));
+            const exists = await worktreeExists(hash, name);
             const branchName = generateAgentBranchName(name, task);
             return {
               name,
               status: "pending" as AgentStatus,
               branch: branchName,
               worktreePath: getWorktreePath(hash, name),
-              isReused: exists,
+              isReused: isReusingAgent && exists,
               error: undefined,
             };
           })
@@ -151,7 +169,7 @@ export function SpawnCommand({
     };
 
     init();
-  }, [count, terminal, branch, task, dryRun, clean]);
+  }, [count, terminal, branch, task, agent, dryRun]);
 
   // Prepare: ensure bare repo exists
   useEffect(() => {
@@ -192,23 +210,33 @@ export function SpawnCommand({
       const claudePath = await findClaudeBinary();
 
       for (let i = 0; i < agents.length; i++) {
-        const agent = agents[i];
+        const agentState = agents[i];
 
-        // Update status to creating worktree
+        // Update status based on whether we're reusing or creating
         setAgents((prev) =>
           prev.map((a, idx) =>
-            idx === i ? { ...a, status: agent.isReused ? "resetting" : "creating-worktree" } : a
+            idx === i
+              ? { ...a, status: agentState.isReused ? "switching-branch" : "creating-worktree" }
+              : a
           )
         );
 
         try {
-          // Create or reset worktree
-          await createWorktree({
-            repoHash,
-            agentName: agent.name,
-            branchName: agent.branch,
-            baseBranch,
-          });
+          if (agentState.isReused) {
+            // Reusing existing agent - switch to new branch if task provided
+            if (task) {
+              await switchWorktreeBranch(repoHash, agentState.name, agentState.branch, baseBranch);
+            }
+            // Otherwise just launch on current branch
+          } else {
+            // Create new worktree
+            await createWorktree({
+              repoHash,
+              agentName: agentState.name,
+              branchName: agentState.branch,
+              baseBranch,
+            });
+          }
 
           // Update to launching
           setAgents((prev) =>
@@ -217,8 +245,8 @@ export function SpawnCommand({
 
           // Launch terminal
           const launchOptions = {
-            name: agent.name,
-            cwd: agent.worktreePath,
+            name: agentState.name,
+            cwd: agentState.worktreePath,
             command: claudePath,
           };
 
@@ -245,7 +273,7 @@ export function SpawnCommand({
       }
 
       if (notify) {
-        await notifySpawnComplete(count);
+        await notifySpawnComplete(agents.length);
       }
 
       setPhase("done");
@@ -253,7 +281,7 @@ export function SpawnCommand({
 
     spawn();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, repoHash, terminalType, agents.length, baseBranch, count, notify]);
+  }, [phase, repoHash, terminalType, agents.length, baseBranch, task, notify]);
 
   // Exit when done
   useEffect(() => {
@@ -277,20 +305,19 @@ export function SpawnCommand({
       <Box flexDirection="column">
         <Text color="yellow">Dry run mode - no actions taken</Text>
         <Box marginTop={1} flexDirection="column">
-          <Text>Would spawn {count} agent(s):</Text>
+          <Text>Would spawn {agents.length} agent(s):</Text>
           <Text dimColor> Terminal: {getTerminalName(terminalType || "unknown")}</Text>
           <Text dimColor> Base branch: {baseBranch || "default"}</Text>
           <Text dimColor> Repo hash: {repoHash}</Text>
           {agents.map((a) => (
             <Text key={a.name} dimColor>
               {" "}
-              [{a.name}] → {a.branch}
+              [{a.name}] → {a.branch} {a.isReused ? "(reusing)" : "(new)"}
             </Text>
           ))}
-          {reusedNames.length > 0 && !clean && (
-            <Text dimColor> Reusing worktrees: {reusedNames.join(", ")}</Text>
+          {reusedNames.length > 0 && (
+            <Text dimColor> Mode: Reusing agent{reusedNames.length > 1 ? "s" : ""}</Text>
           )}
-          {clean && <Text dimColor> Mode: Clean (fresh worktrees)</Text>}
         </Box>
       </Box>
     );
@@ -300,9 +327,9 @@ export function SpawnCommand({
 
   return (
     <Box flexDirection="column">
-      {reusedNames.length > 0 && !clean && phase !== "init" && (
+      {reusedNames.length > 0 && phase !== "init" && (
         <Box marginBottom={1}>
-          <Text color="blue">Reusing existing worktrees: {reusedNames.join(", ")}</Text>
+          <Text color="blue">Reusing existing agent: {reusedNames.join(", ")}</Text>
         </Box>
       )}
 
@@ -310,10 +337,10 @@ export function SpawnCommand({
         <Text>
           Spawning{" "}
           <Text color="#D97757" bold>
-            {count}
+            {agents.length}
           </Text>{" "}
           Claude agent
-          {count === 1 ? "" : "s"} in{" "}
+          {agents.length === 1 ? "" : "s"} in{" "}
           <Text color="cyan">{getTerminalName(terminalType || "unknown")}</Text>
         </Text>
       </Box>

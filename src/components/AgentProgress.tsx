@@ -7,6 +7,7 @@ export type AgentStatus =
   | "cloning"
   | "creating-worktree"
   | "resetting"
+  | "switching-branch"
   | "launching"
   | "running"
   | "error";
@@ -24,6 +25,7 @@ const STATUS_COLORS: Record<AgentStatus, string> = {
   cloning: "yellow",
   "creating-worktree": "yellow",
   resetting: "yellow",
+  "switching-branch": "yellow",
   launching: "cyan",
   running: "green",
   error: "red",
@@ -34,6 +36,7 @@ const STATUS_LABELS: Record<AgentStatus, string> = {
   cloning: "Cloning bare repo",
   "creating-worktree": "Creating worktree",
   resetting: "Resetting branch",
+  "switching-branch": "Switching branch",
   launching: "Launching terminal",
   running: "Running",
   error: "Error",
@@ -44,6 +47,7 @@ export function AgentProgress({ name, status, branch, isReused, error }: AgentPr
     status === "cloning" ||
     status === "creating-worktree" ||
     status === "resetting" ||
+    status === "switching-branch" ||
     status === "launching";
 
   return (

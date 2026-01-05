@@ -10,21 +10,38 @@ const cli = meow(
     $ claudectl <command> [options]
 
   Commands
-    spawn [count]    Spawn multiple Claude agents (default: 3)
+    spawn [count]    Spawn new Claude agents (default: 3)
+    list             List existing Claude agents
+    delete <agent>   Delete a specific agent
+    prune            Remove all agents for current repository
 
-  Options
+  Spawn Options
+    -a, --agent      Reuse an existing agent (mutually exclusive with count)
     -t, --terminal   Force terminal type (kitty, iterm)
     -b, --branch     Base branch for worktrees (default: current)
     -T, --task       Task description for branch naming
-    -c, --clean      Delete existing worktrees and create fresh
     -n, --no-notify  Disable completion notifications
     --dry-run        Show what would be done without executing
 
+  List Options
+    --all            List agents across all repositories
+
+  Delete Options
+    -f, --force      Skip confirmation prompt
+
+  Prune Options
+    --all            Prune agents across all repositories
+    -f, --force      Skip confirmation prompt
+
   Examples
-    $ claudectl spawn 5
-    $ claudectl spawn --terminal iterm
-    $ claudectl spawn --task "fix auth bug"
-    $ claudectl spawn --clean
+    $ claudectl spawn 5                     # Spawn 5 new agents
+    $ claudectl spawn --agent alice         # Reuse agent alice
+    $ claudectl spawn --task "fix auth bug" # New agents with fix/ branches
+    $ claudectl list                        # List agents for current repo
+    $ claudectl list --all                  # List all agents
+    $ claudectl delete alice                # Delete agent alice
+    $ claudectl prune                       # Remove all agents (current repo)
+    $ claudectl prune --all --force         # Remove all agents everywhere
 `,
   {
     importMeta: import.meta,
@@ -41,9 +58,17 @@ const cli = meow(
         type: "string",
         shortFlag: "T",
       },
-      clean: {
+      agent: {
+        type: "string",
+        shortFlag: "a",
+      },
+      all: {
         type: "boolean",
-        shortFlag: "c",
+        default: false,
+      },
+      force: {
+        type: "boolean",
+        shortFlag: "f",
         default: false,
       },
       notify: {
