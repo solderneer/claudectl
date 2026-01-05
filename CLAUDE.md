@@ -80,7 +80,6 @@ Agent worktrees are stored centrally:
 **Commands** (`src/commands/`)
 
 - `spawn.tsx` - Main command: creates worktrees, launches Claude in terminal tabs
-- `init.tsx` - Generates CLAUDE.md by analyzing project type
 
 **Components** (`src/components/`)
 

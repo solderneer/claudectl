@@ -57,14 +57,6 @@ claudectl spawn --branch develop
 claudectl spawn --dry-run
 ```
 
-### Generate CLAUDE.md
-
-```bash
-claudectl init
-```
-
-Analyzes your project and generates a `CLAUDE.md` file with build commands and project context.
-
 ## Example Output
 
 ```

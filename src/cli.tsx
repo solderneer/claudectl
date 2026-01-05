@@ -11,7 +11,6 @@ const cli = meow(
 
   Commands
     spawn [count]    Spawn multiple Claude agents (default: 3)
-    init             Generate CLAUDE.md for current project
 
   Options
     -t, --terminal   Force terminal type (kitty, iterm)
@@ -26,7 +25,6 @@ const cli = meow(
     $ claudectl spawn --terminal iterm
     $ claudectl spawn --task "fix auth bug"
     $ claudectl spawn --clean
-    $ claudectl init
 `,
   {
     importMeta: import.meta,

@@ -1,7 +1,6 @@
 import React from "react";
 import { Box, Text } from "ink";
 import { SpawnCommand } from "./commands/spawn.js";
-import { InitCommand } from "./commands/init.js";
 import { Header } from "./components/Header.js";
 
 export interface AppProps {
@@ -32,8 +31,7 @@ export function App({ command, args, flags }: AppProps) {
           dryRun={flags.dryRun}
         />
       )}
-      {command === "init" && <InitCommand />}
-      {command !== "spawn" && command !== "init" && (
+      {command !== "spawn" && (
         <Box marginTop={1}>
           <Text color="red">Unknown command: {command}</Text>
         </Box>

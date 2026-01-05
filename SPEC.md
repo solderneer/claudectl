@@ -90,14 +90,6 @@ claudectl spawn --branch develop         # Base worktrees on develop
 claudectl spawn --clean                  # Fresh worktrees
 ```
 
-### init
-
-```bash
-claudectl init
-```
-
-Generate a `CLAUDE.md` file by analyzing your project structure.
-
 ---
 
 ## Implementation Details
