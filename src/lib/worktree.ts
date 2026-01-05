@@ -124,7 +124,19 @@ export async function createWorktree(options: CreateWorktreeOptions): Promise<st
     });
   } else {
     // Create new branch from base
-    await execa("git", ["worktree", "add", "-b", branchName, worktreePath, `origin/${base}`], {
+    // In bare repos, branches are stored directly (not as origin/branch)
+    // Try the base branch directly first, fall back to origin/base if needed
+    let baseRef = base;
+    try {
+      await execa("git", ["rev-parse", "--verify", `refs/heads/${base}`], {
+        cwd: bareRepoPath,
+      });
+    } catch {
+      // Try origin/base as fallback (in case repo was cloned non-bare)
+      baseRef = `origin/${base}`;
+    }
+
+    await execa("git", ["worktree", "add", "-b", branchName, worktreePath, baseRef], {
       cwd: bareRepoPath,
     });
   }
