@@ -15,14 +15,16 @@ const cli = meow(
 
   Options
     -t, --terminal   Force terminal type (kitty, iterm)
-    -b, --branch     Branch to clone (default: current)
-    -c, --clean      Delete existing agents and clone fresh
+    -b, --branch     Base branch for worktrees (default: current)
+    -T, --task       Task description for branch naming
+    -c, --clean      Delete existing worktrees and create fresh
     -n, --no-notify  Disable completion notifications
     --dry-run        Show what would be done without executing
 
   Examples
     $ claudectl spawn 5
     $ claudectl spawn --terminal iterm
+    $ claudectl spawn --task "fix auth bug"
     $ claudectl spawn --clean
     $ claudectl init
 `,
@@ -36,6 +38,10 @@ const cli = meow(
       branch: {
         type: "string",
         shortFlag: "b",
+      },
+      task: {
+        type: "string",
+        shortFlag: "T",
       },
       clean: {
         type: "boolean",

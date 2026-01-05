@@ -1,7 +1,7 @@
 import React from "react";
 import { Box, Text } from "ink";
 
-const VERSION = "0.2.0";
+const VERSION = "1.0.0";
 
 export function Header() {
   return (

@@ -18,6 +18,7 @@ After building, test locally with:
 
 ```bash
 node bin/claudectl.js spawn --dry-run
+node bin/claudectl.js spawn 2 --task "fix auth bug" --dry-run
 node bin/claudectl.js --help
 ```
 
@@ -58,31 +59,73 @@ This is a React-based terminal UI application using [Ink](https://github.com/vad
 bin/claudectl.js → src/cli.tsx (meow arg parsing) → src/app.tsx (routes to commands)
 ```
 
+### Directory Structure
+
+Agent worktrees are stored centrally:
+
+```
+~/.claudectl/
+├── repos/
+│   └── <repo-hash>/           # SHA256 of normalized remote URL (8 chars)
+│       ├── bare/              # Bare git repository (shared)
+│       └── worktrees/
+│           ├── alice/         # Worktree on feat/alice-work
+│           └── betty/         # Worktree on fix/betty-fix-auth
+├── queues/                    # Task queues (Phase 2)
+└── ipc/                       # Agent communication (Phase 3)
+```
+
 ### Key Layers
 
 **Commands** (`src/commands/`)
 
-- `spawn.tsx` - Main command: clones repo N times, launches Claude in terminal tabs
+- `spawn.tsx` - Main command: creates worktrees, launches Claude in terminal tabs
 - `init.tsx` - Generates CLAUDE.md by analyzing project type
 
 **Components** (`src/components/`)
 
 - Ink/React components for terminal UI (spinners, progress indicators)
-- `AgentProgress.tsx` - Per-agent status display with name, status, spinner
+- `AgentProgress.tsx` - Per-agent status display with name, branch, status, spinner
 
 **Lib** (`src/lib/`)
 
-- `terminal/` - Terminal detection and tab launching (Kitty via `kitten @`, iTerm via AppleScript)
-- `git.ts` - Git operations: clone, reset, branch detection
-- `names.ts` - Agent name pool and selection logic (prefers reusing existing)
+- `paths.ts` - Centralized path management for ~/.claudectl structure
+- `repo-hash.ts` - Repository identification via URL hashing
+- `worktree.ts` - Git worktree operations (create, remove, list, reset)
+- `branch.ts` - Branch naming conventions (type/agent-description)
+- `names.ts` - Agent name pool and selection logic
+- `terminal/` - Terminal detection and tab launching (Kitty/iTerm)
+- `git.ts` - Core git operations (getGitInfo, isGitRepo)
 - `notifications.ts` - macOS notifications via osascript
 
 ### Key Patterns
 
-- **Agent names**: Uses memorable names (betty, felix, grace) instead of numbers. Names are persisted in folder names (`claude/betty/`) and reused across sessions.
-- **Smart reuse**: If `claude/<name>/` exists, resets repo instead of re-cloning (faster). Use `--clean` to force fresh clones.
+- **Git worktrees**: Uses a single bare repo with worktrees instead of full clones. Dramatically reduces disk space and spawn time.
+- **Agent names**: Uses memorable names (betty, felix, grace). Names persist via worktree directory names.
+- **Branch naming**: Auto-generates branches like `feat/alice-fix-auth` based on agent name and task description.
+- **Smart reuse**: If worktree exists, it's reused. Use `--clean` to force fresh worktrees.
 - **Terminal abstraction**: `LaunchOptions` interface with `name`, `cwd`, `command` - implementations for Kitty and iTerm2.
 
 ### State Management
 
-SpawnCommand uses React hooks with phases: `init` → `spawning` → `done`. Agent state tracks `name`, `status`, `isReused`, `error`.
+SpawnCommand uses React hooks with phases: `init` → `preparing` → `spawning` → `done`. Agent state tracks `name`, `status`, `branch`, `worktreePath`, `isReused`, `error`.
+
+## CLI Usage
+
+```bash
+# Spawn 3 agents (default)
+claudectl spawn
+
+# Spawn with task description (auto-generates branch names)
+claudectl spawn 2 --task "fix auth bug"
+# Creates: fix/alice-fix-auth-bug, fix/betty-fix-auth-bug
+
+# Force fresh worktrees
+claudectl spawn --clean
+
+# Dry run to see what would happen
+claudectl spawn --dry-run
+
+# Specify base branch
+claudectl spawn --branch develop
+```

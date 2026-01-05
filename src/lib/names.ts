@@ -1,5 +1,4 @@
-import { existsSync, readdirSync, statSync } from "fs";
-import { join } from "path";
+import { getExistingAgentNames } from "./worktree.js";
 
 // Short, memorable names for Claude agents
 const AGENT_NAMES = [
@@ -52,27 +51,20 @@ const AGENT_NAMES = [
 ];
 
 /**
- * Get list of existing agent directories in the claude folder
+ * Get list of existing agent names from worktrees
  */
-export function getExistingAgents(claudeDir: string): string[] {
-  if (!existsSync(claudeDir)) {
-    return [];
-  }
-
-  return readdirSync(claudeDir)
-    .filter((name) => {
-      const agentPath = join(claudeDir, name);
-      // Must be a directory and have a .git folder (valid repo)
-      return statSync(agentPath).isDirectory() && existsSync(join(agentPath, ".git"));
-    })
-    .filter((name) => AGENT_NAMES.includes(name)); // Only count known agent names
+export async function getExistingAgents(repoHash: string): Promise<string[]> {
+  const existingNames = await getExistingAgentNames(repoHash);
+  // Only return names that are in our known agent pool
+  return existingNames.filter((name) => AGENT_NAMES.includes(name));
 }
 
 /**
- * Pick agent names, preferring existing ones first
+ * Pick agent names, preferring existing ones first.
+ * This is now async since it needs to check worktrees.
  */
-export function pickAgentNames(count: number, claudeDir: string): string[] {
-  const existing = getExistingAgents(claudeDir);
+export async function pickAgentNames(count: number, repoHash: string): Promise<string[]> {
+  const existing = await getExistingAgents(repoHash);
   const result: string[] = [];
 
   // First, use existing agents (up to count)
@@ -83,7 +75,7 @@ export function pickAgentNames(count: number, claudeDir: string): string[] {
 
   // If we need more, pick random new names
   if (result.length < count) {
-    const available = AGENT_NAMES.filter((n) => !result.includes(n));
+    const available = AGENT_NAMES.filter((n) => !result.includes(n) && !existing.includes(n));
     const shuffled = available.sort(() => Math.random() - 0.5);
     const needed = count - result.length;
     result.push(...shuffled.slice(0, needed));
@@ -93,9 +85,31 @@ export function pickAgentNames(count: number, claudeDir: string): string[] {
 }
 
 /**
- * Check if an agent name corresponds to an existing directory
+ * Check if an agent name corresponds to an existing worktree
  */
-export function isExistingAgent(name: string, claudeDir: string): boolean {
-  const agentPath = join(claudeDir, name);
-  return existsSync(agentPath) && existsSync(join(agentPath, ".git"));
+export async function isExistingAgent(name: string, repoHash: string): Promise<boolean> {
+  const existing = await getExistingAgents(repoHash);
+  return existing.includes(name);
+}
+
+/**
+ * Get random agent names (ignores existing, for --clean mode)
+ */
+export function getRandomAgentNames(count: number): string[] {
+  const shuffled = [...AGENT_NAMES].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, count);
+}
+
+/**
+ * Check if a name is a valid agent name
+ */
+export function isValidAgentName(name: string): boolean {
+  return AGENT_NAMES.includes(name);
+}
+
+/**
+ * Get all available agent names
+ */
+export function getAllAgentNames(): string[] {
+  return [...AGENT_NAMES];
 }

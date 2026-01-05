@@ -10,6 +10,7 @@ export interface AppProps {
   flags: {
     terminal?: string;
     branch?: string;
+    task?: string;
     clean: boolean;
     notify: boolean;
     dryRun: boolean;
@@ -25,6 +26,7 @@ export function App({ command, args, flags }: AppProps) {
           count={args[0] ? parseInt(args[0], 10) : 3}
           terminal={flags.terminal as "kitty" | "iterm" | undefined}
           branch={flags.branch}
+          task={flags.task}
           clean={flags.clean}
           notify={flags.notify}
           dryRun={flags.dryRun}

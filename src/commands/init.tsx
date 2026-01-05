@@ -40,8 +40,8 @@ export function InitCommand() {
     check();
   }, []);
 
-  const handleConfirm = (confirmed: boolean) => {
-    if (!confirmed || !gitRoot || !analysis) {
+  const handleConfirm = () => {
+    if (!gitRoot || !analysis) {
       exit();
       return;
     }
@@ -54,6 +54,10 @@ export function InitCommand() {
 
     setPhase("done");
     setTimeout(() => exit(), 1000);
+  };
+
+  const handleCancel = () => {
+    exit();
   };
 
   if (phase === "error") {
@@ -97,7 +101,7 @@ export function InitCommand() {
 
         <Box marginTop={1}>
           <Text>Generate CLAUDE.md? </Text>
-          <ConfirmInput onConfirm={handleConfirm} />
+          <ConfirmInput onConfirm={handleConfirm} onCancel={handleCancel} />
         </Box>
       </Box>
     );
