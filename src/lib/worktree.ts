@@ -79,8 +79,9 @@ export async function ensureBareRepo(remoteUrl: string, repoHash: string): Promi
     }
   } else {
     // Fetch latest changes
-    // In bare repos, we need explicit refspec since --bare clone doesn't set up fetch config
-    await execa("git", ["fetch", "origin", "+refs/heads/*:refs/heads/*", "--prune"], {
+    // Use refs/remotes/origin/* to avoid conflicts with branches checked out in worktrees
+    // Git refuses to fetch into branches that are currently checked out
+    await execa("git", ["fetch", "origin", "+refs/heads/*:refs/remotes/origin/*", "--prune"], {
       cwd: bareRepoPath,
     });
   }
@@ -127,16 +128,16 @@ export async function createWorktree(options: CreateWorktreeOptions): Promise<st
     });
   } else {
     // Create new branch from base
-    // In bare repos, branches are stored directly (not as origin/branch)
-    // Try the base branch directly first, fall back to origin/base if needed
-    let baseRef = base;
+    // We fetch to refs/remotes/origin/*, so use that as the base ref
+    // Fall back to refs/heads if the remote ref doesn't exist (freshly cloned bare repo)
+    let baseRef = `refs/remotes/origin/${base}`;
     try {
-      await execa("git", ["rev-parse", "--verify", `refs/heads/${base}`], {
+      await execa("git", ["rev-parse", "--verify", baseRef], {
         cwd: bareRepoPath,
       });
     } catch {
-      // Try origin/base as fallback (in case repo was cloned non-bare)
-      baseRef = `origin/${base}`;
+      // Fall back to local branch (initial clone populates refs/heads directly)
+      baseRef = base;
     }
 
     await execa("git", ["worktree", "add", "-b", branchName, worktreePath, baseRef], {
